@@ -1,4 +1,4 @@
-export const API_BASE_URL = 'http://test.local/api';
+export const API_BASE_URL = 'http://pro.rundoc.in/api';
 
 export const API_ENDPOINTS = {
   // Auth & General

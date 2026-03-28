@@ -20,9 +20,9 @@ jobs:
         with:
           node-version: 18
 
-      # 3. Install deps
+      # 3. Install deps (FIXED ✅)
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       # 4. Build Vue
       - name: Build project
