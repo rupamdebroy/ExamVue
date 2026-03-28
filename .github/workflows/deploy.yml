@@ -1,0 +1,59 @@
+name: Vue Deploy (test.rundoc.in)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      # 3. Install deps
+      - name: Install dependencies
+        run: npm install
+
+      # 4. Build Vue
+      - name: Build project
+        run: npm run build
+
+      # 5. Clean server folder
+      - name: Clean remote folder
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 35.223.218.49
+          username: rundoc-test
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            rm -rf /home/rundoc-test/htdocs/test.rundoc.in/*
+
+      # 6. Upload dist
+      - name: Upload dist
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 35.223.218.49
+          username: rundoc-test
+          password: ${{ secrets.SSH_PASSWORD }}
+          source: "dist/*"
+          target: "/home/rundoc-test/htdocs/test.rundoc.in/"
+
+      # 7. Permissions
+      - name: Set permissions
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: 35.223.218.49
+          username: rundoc-test
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            chmod -R 755 /home/rundoc-test/htdocs/test.rundoc.in/
