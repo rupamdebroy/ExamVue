@@ -1,0 +1,65 @@
+﻿AdminResultDetail.vue | L22 | const res = await fetch(`${API_BASE_URL}/admin/result_detail.php?testuser_id=${tuid}`, { headers: authH })
+AdminResults.vue | L20 | const res = await fetch(`${API_BASE_URL}/admin/results.php`, {
+AdminResults.vue | L81 | const res = await fetch(`${API_BASE_URL}/admin/delete_result.php?testuser_id=${resultToDelete.value.testuser_id}`, {
+AnswerManagement.vue | L114 | const response = await fetch(`${API_BASE_URL}/admin/questions.php?question_id=${questionId.value}`, {
+AnswerManagement.vue | L134 | const response = await fetch(`${API_BASE_URL}/admin/answers.php?question_id=${questionId.value}`, {
+AnswerManagement.vue | L155 | ? `${API_BASE_URL}/admin/answers.php?answer_id=${selectedAnswer.value.answer_id}`
+AnswerManagement.vue | L156 | : `${API_BASE_URL}/admin/answers.php`;
+AnswerManagement.vue | L191 | const response = await fetch(`${API_BASE_URL}/admin/answers.php?answer_id=${answer.answer_id}`, {
+CategoryManagement.vue | L22 | const res = await fetch(`${API_BASE_URL}/admin/groups.php`, {
+CategoryManagement.vue | L63 | ? `${API_BASE_URL}/admin/groups.php?group_id=${formData.value.group_id}`
+CategoryManagement.vue | L64 | : `${API_BASE_URL}/admin/groups.php`
+CategoryManagement.vue | L95 | const res = await fetch(`${API_BASE_URL}/admin/groups.php?group_id=${groupToDelete.value.group_id}`, {
+Dashboard.vue | L35 | const userRes = await fetch(`${API_BASE_URL}/user.php`, {
+Dashboard.vue | L56 | const testsRes = await fetch(`${API_BASE_URL}/tests.php`, {
+Login.vue | L17 | const response = await fetch(`${API_BASE_URL}/login.php`, {
+ModuleManagement.vue | L99 | const response = await fetch(`${API_BASE_URL}/admin/modules.php`, {
+ModuleManagement.vue | L124 | window.open(`${API_BASE_URL}/admin/export_modules.php?token=${token}`, '_blank');
+ModuleManagement.vue | L137 | const response = await fetch(`${API_BASE_URL}/admin/import_modules.php`, {
+ModuleManagement.vue | L202 | ? `${API_BASE_URL}/admin/modules.php?module_id=${selectedModule.value.module_id}`
+ModuleManagement.vue | L203 | : `${API_BASE_URL}/admin/modules.php`;
+ModuleManagement.vue | L236 | const response = await fetch(`${API_BASE_URL}/admin/modules.php?module_id=${mod.module_id}`, {
+PassageManagement.vue | L210 | fetch(`${API}/modules.php`, { headers: authH() }),
+PassageManagement.vue | L211 | fetch(`${API}/topics.php`,  { headers: authH() })
+PassageManagement.vue | L223 | const res  = await fetch(`${API}/passages.php?${params}`, { headers: authH() });
+PassageManagement.vue | L244 | let url = `${API}/passages.php`;
+PassageManagement.vue | L262 | const res  = await fetch(`${API}/passages.php?passage_id=${passageToDelete.value.passage_id}`, { method: 'DELETE', headers: authH() });
+QuestionManagement.vue | L302 | fetch(`${API}/modules.php`, { headers }),
+QuestionManagement.vue | L303 | fetch(`${API}/topics.php`, { headers })
+QuestionManagement.vue | L325 | const res = await fetch(`${API}/questions.php?${params}`, { headers: authHeader() });
+QuestionManagement.vue | L341 | ? `${API}/questions.php?question_id=${formData.question_id}`
+QuestionManagement.vue | L342 | : `${API}/questions.php`;
+QuestionManagement.vue | L369 | const res = await fetch(`${API}/questions.php?question_id=${questionToDelete.value.question_id}`, {
+QuestionManagement.vue | L388 | let url = `${API}/export_questions.php?token=${getToken()}`;
+QuestionManagement.vue | L407 | const res = await fetch(`${API}/import_questions.php`, {
+QuestionsListBulk.vue | L335 | const res = await fetch(`${apiBase}/modules.php`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+QuestionsListBulk.vue | L352 | const res = await fetch(`${apiBase}/topics.php?module_id=${selectedModule.value}`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+QuestionsListBulk.vue | L369 | const mRes = await fetch(`${apiBase}/modules.php`, { headers: { 'Authorization': `Bearer ${token}` } });
+QuestionsListBulk.vue | L374 | const tRes = await fetch(`${apiBase}/topics.php?module_id=${mod.module_id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+QuestionsListBulk.vue | L395 | const res = await fetch(`${apiBase}/questions_list.php?${params}`, {
+QuestionsListBulk.vue | L418 | res = await fetch(`${apiBase}/questions_list.php`, {
+QuestionsListBulk.vue | L423 | res = await fetch(`${apiBase}/questions_list.php`, {
+QuestionsListBulk.vue | L428 | res = await fetch(`${apiBase}/questions_list.php`, {
+Results.vue | L25 | const res = await fetch(`${API_BASE_URL}/test_results.php?testuser_id=${testuser_id}`, {
+Results.vue | L39 | fetch(`${API_BASE_URL}/test_analytics.php?testuser_id=${testuser_id}`, {
+Results.vue | L42 | fetch(`${API_BASE_URL}/test_leaderboard.php?test_id=${data.test_id}`, {
+TestTaking.vue | L116 | const res = await fetch(`${API}/test_start.php`, {
+TestTaking.vue | L173 | `${API}/test_questions_bulk.php?testuser_id=${testuser_id.value}`,
+TestTaking.vue | L275 | await fetch(`${API}/test_answer.php`, {
+TestTaking.vue | L307 | await fetch(`${API}/test_answer.php`, {
+TestTaking.vue | L383 | await fetch(`${API}/test_end.php`, {
+TopicManagement.vue | L118 | const modRes = await fetch(`${API_BASE_URL}/admin/modules.php`, {
+TopicManagement.vue | L127 | const topRes = await fetch(`${API_BASE_URL}/admin/topics.php`, {
+TopicManagement.vue | L146 | const topRes = await fetch(`${API_BASE_URL}/admin/topics.php`, {
+TopicManagement.vue | L164 | let url = `${API_BASE_URL}/admin/export_topics.php?token=${token}`;
+TopicManagement.vue | L179 | const response = await fetch(`${API_BASE_URL}/admin/import_topics.php`, {
+TopicManagement.vue | L250 | ? `${API_BASE_URL}/admin/topics.php?topic_id=${selectedTopic.value.subject_id}`
+TopicManagement.vue | L251 | : `${API_BASE_URL}/admin/topics.php`;
+TopicManagement.vue | L284 | const response = await fetch(`${API_BASE_URL}/admin/topics.php?topic_id=${topic.subject_id}`, {
+UserGroups.vue | L16 | const res = await fetch(`${API_BASE_URL}/user_groups.php`, {
+UserGroups.vue | L40 | const res = await fetch(`${API_BASE_URL}/user_groups.php`, {
+UserManagement.vue | L89 | const response = await fetch(`${API_BASE_URL}/admin/users.php`, {
+UserManagement.vue | L111 | const response = await fetch(`${API_BASE_URL}/admin/groups.php`, {
+UserManagement.vue | L190 | ? `${API_BASE_URL}/admin/users.php?user_id=${selectedUser.value.user_id}`
+UserManagement.vue | L191 | : `${API_BASE_URL}/admin/users.php`;
+UserManagement.vue | L227 | const response = await fetch(`${API_BASE_URL}/admin/users.php?user_id=${user.user_id}`, {

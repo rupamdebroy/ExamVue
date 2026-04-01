@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="user-management">
     <div class="header-section">
       <h1>User Management</h1>
@@ -67,7 +67,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import UserFormModal from '../components/UserFormModal.vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const users = ref([]);
 const availableGroups = ref([]);
@@ -86,7 +86,7 @@ const fetchUsers = async () => {
   error.value = '';
   try {
     const token = localStorage.getItem('tce_token');
-    const response = await fetch(`${API_BASE_URL}/admin/users.php`, {
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_USERS}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -108,7 +108,7 @@ const fetchUsers = async () => {
 const fetchGroups = async () => {
   try {
     const token = localStorage.getItem('tce_token');
-    const response = await fetch(`${API_BASE_URL}/admin/groups.php`, {
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_GROUPS}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -187,8 +187,8 @@ const saveUser = async (userData) => {
   try {
     const token = localStorage.getItem('tce_token');
     const url = isEditing.value 
-      ? `${API_BASE_URL}/admin/users.php?user_id=${selectedUser.value.user_id}` 
-      : `${API_BASE_URL}/admin/users.php`;
+      ? `${API_ENDPOINTS.ADMIN_USERS}?user_id=${selectedUser.value.user_id}` 
+      : `${API_ENDPOINTS.ADMIN_USERS}`;
       
     const method = isEditing.value ? 'PUT' : 'POST';
     console.log(`UserManagement: making ${method} request to ${url}`);
@@ -224,7 +224,7 @@ const confirmDelete = async (user) => {
   if (confirm(`Are you sure you want to permanently delete user: ${user.user_name}?`)) {
     try {
       const token = localStorage.getItem('tce_token');
-      const response = await fetch(`${API_BASE_URL}/admin/users.php?user_id=${user.user_id}`, {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN_USERS}?user_id=${user.user_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -418,3 +418,4 @@ h1 {
   text-align: center;
 }
 </style
+

@@ -1,13 +1,22 @@
-<template>
+﻿<template>
   <div class="module-management">
     <div class="header-section">
       <div class="header-titles">
         <h1>Module Management</h1>
         <p>Manage TCExam subjects and tests containers</p>
       </div>
-      <button class="primary-btn" @click="openCreateModal">
-        <span class="icon">+</span> Add New Module
-      </button>
+      <div class="header-actions">
+        <button class="secondary-btn" @click="exportModules">
+          <span class="icon">â†“</span> Export CSV
+        </button>
+        <label class="secondary-btn">
+          <span class="icon">â†‘</span> Import CSV
+          <input type="file" accept=".csv" @change="importModules" style="display: none" />
+        </label>
+        <button class="primary-btn" @click="openCreateModal">
+          <span class="icon">+</span> Add New Module
+        </button>
+      </div>
     </div>
     
     <div class="controls-section">
@@ -69,7 +78,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import ModuleFormModal from '../components/ModuleFormModal.vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const modulesList = ref([]);
 const loading = ref(true);
@@ -87,7 +96,7 @@ const fetchModules = async () => {
   infoMessage.value = '';
   try {
     const token = localStorage.getItem('tce_token');
-    const response = await fetch(`${API_BASE_URL}/admin/modules.php`, {
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -109,6 +118,44 @@ const fetchModules = async () => {
 onMounted(() => {
   fetchModules();
 });
+
+const exportModules = () => {
+  const token = localStorage.getItem('tce_token');
+  window.open(`${API_ENDPOINTS.ADMIN_EXPORT_MODULES}?token=${token}`, '_blank');
+};
+
+const importModules = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    loading.value = true;
+    const token = localStorage.getItem('tce_token');
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_IMPORT_MODULES}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const result = await response.json();
+    if (result.status === 'success') {
+      showInfo(result.message);
+      fetchModules();
+    } else {
+      showError(result.message || 'Failed to import modules');
+    }
+  } catch (err) {
+    showError('Network error while importing');
+  } finally {
+    loading.value = false;
+    event.target.value = ''; // Reset file input
+  }
+};
 
 const filteredModules = computed(() => {
   if (!searchQuery.value) return modulesList.value;
@@ -152,8 +199,8 @@ const saveModule = async (moduleData) => {
   try {
     const token = localStorage.getItem('tce_token');
     const url = isEditing.value 
-      ? `${API_BASE_URL}/admin/modules.php?module_id=${selectedModule.value.module_id}` 
-      : `${API_BASE_URL}/admin/modules.php`;
+      ? `${API_ENDPOINTS.ADMIN_MODULES}?module_id=${selectedModule.value.module_id}` 
+      : `${API_ENDPOINTS.ADMIN_MODULES}`;
       
     const method = isEditing.value ? 'PUT' : 'POST';
     
@@ -186,7 +233,7 @@ const confirmDelete = async (mod) => {
   if (confirm(`Are you sure you want to delete module: ${mod.module_name}?`)) {
     try {
       const token = localStorage.getItem('tce_token');
-      const response = await fetch(`${API_BASE_URL}/admin/modules.php?module_id=${mod.module_id}`, {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN_MODULES}?module_id=${mod.module_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -234,6 +281,30 @@ const confirmDelete = async (mod) => {
   color: #64748b;
   margin: 0.2rem 0 0 0;
   font-size: 0.95rem;
+}
+
+.header-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.secondary-btn {
+  background: white;
+  color: #4f46e5;
+  border: 1px solid #4f46e5;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+}
+
+.secondary-btn:hover {
+  background: #f5f3ff;
 }
 
 .primary-btn {
@@ -400,3 +471,4 @@ const confirmDelete = async (mod) => {
   border-left: 4px solid #0ea5e9;
 }
 </style>
+

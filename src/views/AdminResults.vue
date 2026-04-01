@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const results = ref([])
 const isLoading = ref(true)
@@ -17,7 +17,7 @@ const isDeleting = ref(false)
 const fetchResults = async () => {
   const token = localStorage.getItem('tce_token')
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/results.php`, {
+    const res = await fetch(API_ENDPOINTS.ADMIN_RESULTS, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await res.json()
@@ -78,7 +78,7 @@ const executeDelete = async () => {
   isDeleting.value = true;
   const token = localStorage.getItem('tce_token');
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/delete_result.php?testuser_id=${resultToDelete.value.testuser_id}`, {
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_DELETE_RESULT}?testuser_id=${resultToDelete.value.testuser_id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
@@ -146,8 +146,10 @@ onMounted(fetchResults)
           <tr>
             <th>User</th>
             <th>Test Name</th>
+            <th>Attempt</th>
             <th>Start Time</th>
             <th>End Time</th>
+            <th>Questions</th>
             <th>Score</th>
             <th>Status</th>
             <th>Actions</th>
@@ -162,10 +164,16 @@ onMounted(fetchResults)
               </div>
             </td>
             <td><strong>{{ r.test_name }}</strong></td>
+            <td>
+              <span class="badge neutral">Attempt {{ r.attempt_number }}</span>
+              <span v-if="r.is_repeatable" class="badge neutral" style="margin-left:4px;background:#eff6ff;color:#3b82f6;">Repeatable</span>
+            </td>
             <td>{{ formatDate(r.start_time) }}</td>
             <td>{{ formatDate(r.end_time) }}</td>
+            <td style="text-align:center">{{ r.question_count || '—' }}</td>
             <td>
-              <strong style="color: #111827;">{{ r.score }}</strong> / {{ r.max_score }}
+              <strong style="color: #111827;">{{ r.score }}</strong>
+              <span style="color:#94a3b8"> / {{ r.max_score ?? '?' }}</span>
             </td>
             <td>
               <span v-if="r.passed === true" class="badge passed">Passed</span>
@@ -173,7 +181,7 @@ onMounted(fetchResults)
               <span v-else class="badge neutral">Completed</span>
             </td>
             <td class="action-cell">
-              <router-link :to="`/results/${r.testuser_id}`" class="view-btn">View Detailed</router-link>
+              <router-link :to="`/admin/results/${r.testuser_id}`" class="view-btn">📊 Detail Review</router-link>
               <button class="delete-btn" @click="confirmDelete(r)" title="Delete Result">🗑️</button>
             </td>
           </tr>

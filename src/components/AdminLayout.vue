@@ -33,13 +33,13 @@ const closeSidebar = () => {
   min-height: 100vh;
   background-color: #f8fafc;
   font-family: 'Inter', sans-serif;
-  /* Prevent horizontal scroll if animating */
   overflow-x: hidden; 
 }
 
 .main-wrapper {
   display: flex;
   flex-direction: column;
+  position: relative;
   min-height: 100vh;
   margin-left: 280px; /* Width of sidebar */
   transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);

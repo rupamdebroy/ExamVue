@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="bulk-management">
     <div class="header-section">
       <div class="header-titles">
@@ -7,13 +7,15 @@
       </div>
     </div>
 
-    <!-- Toast Messages -->
-    <transition name="slide-down">
-      <div class="toast error-toast" v-if="error">⚠️ {{ error }}</div>
-    </transition>
-    <transition name="slide-down">
-      <div class="toast info-toast" v-if="infoMessage">✅ {{ infoMessage }}</div>
-    </transition>
+    <!-- Toast Messages (fixed overlay) -->
+    <teleport to="body">
+      <transition name="toast-slide">
+        <div class="toast error-toast" v-if="error">âš ï¸ {{ error }}</div>
+      </transition>
+      <transition name="toast-slide">
+        <div class="toast info-toast" v-if="infoMessage">âœ… {{ infoMessage }}</div>
+      </transition>
+    </teleport>
 
     <!-- Filters Card -->
     <div class="filters-card">
@@ -67,32 +69,32 @@
       <div class="bulk-toolbar" v-if="selectedQuestions.length > 0">
         <div class="toolbar-left">
           <span class="selected-count"><strong>{{ selectedQuestions.length }}</strong> selected</span>
-          <button class="tb-btn deselect" @click="selectedQuestions = []">✕ Deselect</button>
+          <button class="tb-btn deselect" @click="selectedQuestions = []">âœ• Deselect</button>
         </div>
         <div class="toolbar-right">
-          <button class="tb-btn enable" @click="openBulkModal('enable')">✔ Enable</button>
-          <button class="tb-btn disable" @click="openBulkModal('disable')">✕ Disable</button>
+          <button class="tb-btn enable" @click="openBulkModal('enable')">âœ” Enable</button>
+          <button class="tb-btn disable" @click="openBulkModal('disable')">âœ• Disable</button>
           <div class="tb-sep"></div>
           <select class="form-select dest-select" v-model="targetTopic">
-            <option value="">— Target Topic —</option>
+            <option value="">â€” Target Topic â€”</option>
             <optgroup v-for="mod in treeNav" :key="mod.id" :label="mod.name">
               <option v-for="top in mod.topics" :key="top.id" :value="top.id">{{ top.name }}</option>
             </optgroup>
           </select>
-          <button class="tb-btn copy" :disabled="!targetTopic" @click="openBulkModal('copy')">📋 Copy To</button>
-          <button class="tb-btn move" :disabled="!targetTopic" @click="openBulkModal('move')">📦 Move To</button>
+          <button class="tb-btn copy" :disabled="!targetTopic" @click="openBulkModal('copy')">ðŸ“‹ Copy To</button>
+          <button class="tb-btn move" :disabled="!targetTopic" @click="openBulkModal('move')">ðŸ“¦ Move To</button>
           <div class="tb-sep"></div>
-          <button class="tb-btn del" @click="openBulkModal('delete')">🗑 Delete</button>
+          <button class="tb-btn del" @click="openBulkModal('delete')">ðŸ—‘ Delete</button>
         </div>
       </div>
     </transition>
 
-    <!-- Status bar -->
     <div class="status-bar" v-if="!loading && questionsList.length > 0">
       Showing <strong>{{ paginatedQuestions.length }}</strong> of <strong>{{ filteredQuestions.length }}</strong>
       questions
       <span v-if="searchQuery"> matching "<em>{{ searchQuery }}</em>"</span>
       <span v-if="selectedTopic"> in {{ currentTopicName }}</span>
+      <span v-else-if="selectedModule"> in module {{ selectedModuleName }}</span>
       <button class="select-label" @click="toggleAll(true)" v-if="selectedQuestions.length < filteredQuestions.length">
         Select all {{ filteredQuestions.length }}
       </button>
@@ -101,11 +103,12 @@
       </button>
     </div>
 
+
     <!-- Questions Table -->
     <div class="table-container">
       <div class="loading-overlay" v-if="loading">
         <div class="spinner-ring"></div>
-        <span>Loading questions…</span>
+        <span>Loading questionsâ€¦</span>
       </div>
 
       <table class="data-table" v-if="paginatedQuestions.length > 0">
@@ -133,7 +136,7 @@
                   <div class="q-title" v-html="truncateText(q.question_description)"></div>
                   <div class="q-actions">
                     <button class="action-btn expand-btn" @click="toggleExpand(q.question_id)" :title="expandedQuestions.includes(q.question_id) ? 'Collapse' : 'Expand answers'">
-                      {{ expandedQuestions.includes(q.question_id) ? '▲' : '▼' }}
+                      {{ expandedQuestions.includes(q.question_id) ? 'â–²' : 'â–¼' }}
                     </button>
                   </div>
                 </div>
@@ -158,7 +161,7 @@
                 <div class="answers-panel">
                   <div v-if="q.answers && q.answers.length > 0">
                     <div v-for="a in q.answers" :key="a.answer_id" class="answer-item" :class="{ 'answer-correct': a.answer_isright }">
-                      <span class="answer-icon">{{ a.answer_isright ? '✓' : '○' }}</span>
+                      <span class="answer-icon">{{ a.answer_isright ? 'âœ“' : 'â—‹' }}</span>
                       <span class="answer-text" v-html="a.answer_description"></span>
                     </div>
                   </div>
@@ -170,26 +173,22 @@
         </tbody>
       </table>
 
-      <div v-else-if="!loading && selectedTopic" class="empty-state">
-        <div class="empty-icon">📋</div>
+      <div v-else-if="!loading && questionsList.length === 0" class="empty-state">
+        <div class="empty-icon">ðŸ“‹</div>
         <div>No questions found{{ searchQuery ? ` matching "${searchQuery}"` : '' }}.</div>
-      </div>
-      <div v-else-if="!loading" class="empty-state">
-        <div class="empty-icon">🔍</div>
-        <div>Select a <strong>Module</strong> and <strong>Topic</strong> to list questions.</div>
       </div>
     </div>
 
     <!-- Pagination -->
     <div class="pagination" v-if="totalPages > 1">
-      <button class="page-btn" :disabled="currentPage === 1" @click="currentPage = 1">«</button>
-      <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">‹</button>
+      <button class="page-btn" :disabled="currentPage === 1" @click="currentPage = 1">Â«</button>
+      <button class="page-btn" :disabled="currentPage === 1" @click="currentPage--">â€¹</button>
       <span v-for="page in visiblePages" :key="page">
         <button v-if="page !== '...'" class="page-btn" :class="{ active: page === currentPage }" @click="currentPage = page">{{ page }}</button>
-        <span v-else class="page-ellipsis">…</span>
+        <span v-else class="page-ellipsis">â€¦</span>
       </span>
-      <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">›</button>
-      <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage = totalPages">»</button>
+      <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage++">â€º</button>
+      <button class="page-btn" :disabled="currentPage === totalPages" @click="currentPage = totalPages">Â»</button>
     </div>
 
     <!-- Bulk Action Confirmation Modal -->
@@ -201,7 +200,7 @@
         <div class="confirm-actions">
           <button class="cancel-btn" @click="bulkModalAction = null">Cancel</button>
           <button class="confirm-btn" :class="bulkModalAction === 'delete' ? 'danger' : 'primary'" :disabled="loading" @click="executeBulkAction">
-            {{ loading ? 'Processing…' : 'Confirm' }}
+            {{ loading ? 'Processingâ€¦' : 'Confirm' }}
           </button>
         </div>
       </div>
@@ -211,7 +210,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const modules = ref([]);
 const topics = ref([]);
@@ -236,11 +235,11 @@ const infoMessage = ref('');
 const bulkModalAction = ref(null);
 
 const bulkModalConfig = {
-  enable:  { icon: '✔', title: 'Enable Questions', msg: (n) => `Enable ${n} selected question(s)?` },
-  disable: { icon: '⏸', title: 'Disable Questions', msg: (n) => `Disable ${n} selected question(s)?` },
-  copy:    { icon: '📋', title: 'Copy Questions', msg: (n) => `Copy ${n} selected question(s) to the target topic?` },
-  move:    { icon: '📦', title: 'Move Questions', msg: (n) => `Move ${n} selected question(s) to the target topic?` },
-  delete:  { icon: '🗑', title: 'Delete Questions', msg: (n) => `Delete ${n} selected question(s)? Questions in use will be disabled instead.` },
+  enable:  { icon: 'âœ”', title: 'Enable Questions', msg: (n) => `Enable ${n} selected question(s)?` },
+  disable: { icon: 'â¸', title: 'Disable Questions', msg: (n) => `Disable ${n} selected question(s)?` },
+  copy:    { icon: 'ðŸ“‹', title: 'Copy Questions', msg: (n) => `Copy ${n} selected question(s) to the target topic?` },
+  move:    { icon: 'ðŸ“¦', title: 'Move Questions', msg: (n) => `Move ${n} selected question(s) to the target topic?` },
+  delete:  { icon: 'ðŸ—‘', title: 'Delete Questions', msg: (n) => `Delete ${n} selected question(s)? Questions in use will be disabled instead.` },
 };
 
 const bulkModalIcon = computed(() => bulkModalConfig[bulkModalAction.value]?.icon || '?');
@@ -293,6 +292,12 @@ const currentTopicName = computed(() => {
 onMounted(async () => {
   await fetchModules();
   await buildTreeNav();
+  fetchQuestions(); // Load all questions on mount
+});
+
+const selectedModuleName = computed(() => {
+  const m = modules.value.find(m => m.module_id == selectedModule.value);
+  return m?.module_name || '';
 });
 
 const getTypeLabel = (typeId) => {
@@ -303,7 +308,7 @@ const getTypeLabel = (typeId) => {
 const truncateText = (text) => {
   if (!text) return '';
   const stripped = text.replace(/<[^>]*>/g, '');
-  return stripped.length > 200 ? stripped.slice(0, 200) + '…' : stripped;
+  return stripped.length > 200 ? stripped.slice(0, 200) + 'â€¦' : stripped;
 };
 
 const toggleAll = (check) => {
@@ -321,13 +326,13 @@ const toggleExpand = (id) => {
   else expandedQuestions.value.splice(idx, 1);
 };
 
-const apiBase = `${API_BASE_URL}/admin`;
+
 const getToken = () => localStorage.getItem('tce_token');
 const authHeaders = () => ({ 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' });
 
 const fetchModules = async () => {
   try {
-    const res = await fetch(`${apiBase}/modules.php`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
     const data = await res.json();
     if (data.status === 'success') modules.value = data.data;
   } catch { showError('Failed to load modules.'); }
@@ -338,12 +343,18 @@ const fetchTopics = async () => {
   topics.value = [];
   questionsList.value = [];
   selectedQuestions.value = [];
-  if (!selectedModule.value) return;
+  if (!selectedModule.value) {
+    // No module selected â€” fetch all questions
+    fetchQuestions();
+    return;
+  }
   try {
-    const res = await fetch(`${apiBase}/topics.php?module_id=${selectedModule.value}`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_TOPICS}?module_id=${selectedModule.value}`, { headers: { 'Authorization': `Bearer ${getToken()}` } });
     const data = await res.json();
     if (data.status === 'success') topics.value = data.data;
   } catch { showError('Failed to load topics.'); }
+  // Fetch questions for selected module (all topics)
+  fetchQuestions();
 };
 
 const onTopicChange = () => {
@@ -355,12 +366,12 @@ const onTopicChange = () => {
 const buildTreeNav = async () => {
   try {
     const token = getToken();
-    const mRes = await fetch(`${apiBase}/modules.php`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const mRes = await fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, { headers: { 'Authorization': `Bearer ${token}` } });
     const mData = await mRes.json();
     if (mData.status !== 'success') return;
     let tree = [];
     for (const mod of mData.data) {
-      const tRes = await fetch(`${apiBase}/topics.php?module_id=${mod.module_id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const tRes = await fetch(`${API_ENDPOINTS.ADMIN_TOPICS}?module_id=${mod.module_id}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const tData = await tRes.json();
       if (tData.status === 'success' && tData.data.length > 0) {
         tree.push({ id: mod.module_id, name: mod.module_name, topics: tData.data.map(t => ({ id: t.subject_id, name: t.subject_name })) });
@@ -371,12 +382,17 @@ const buildTreeNav = async () => {
 };
 
 const fetchQuestions = async () => {
-  if (!selectedTopic.value) return;
   loading.value = true;
   selectedQuestions.value = [];
   expandedQuestions.value = [];
   try {
-    const res = await fetch(`${apiBase}/questions_list.php?subject_id=${selectedTopic.value}&include_answers=${includeAnswers.value ? '1' : '0'}`, {
+    // Build query params â€” all are optional
+    const params = new URLSearchParams({ include_answers: includeAnswers.value ? '1' : '0' });
+    if (selectedTopic.value) params.set('subject_id', selectedTopic.value);
+    else if (selectedModule.value) params.set('module_id', selectedModule.value);
+    if (searchQuery.value) params.set('search', searchQuery.value);
+
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS_LIST}?${params}`, {
       headers: { 'Authorization': `Bearer ${getToken()}` }
     });
     const data = await res.json();
@@ -399,17 +415,17 @@ const executeBulkAction = async () => {
   try {
     let res;
     if (action === 'enable' || action === 'disable') {
-      res = await fetch(`${apiBase}/questions_list.php`, {
+      res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS_LIST}`, {
         method: 'PUT', headers: authHeaders(),
         body: JSON.stringify({ question_ids: selectedQuestions.value, action })
       });
     } else if (action === 'copy' || action === 'move') {
-      res = await fetch(`${apiBase}/questions_list.php`, {
+      res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS_LIST}`, {
         method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ question_ids: selectedQuestions.value, target_subject_id: targetTopic.value, action })
       });
     } else if (action === 'delete') {
-      res = await fetch(`${apiBase}/questions_list.php`, {
+      res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS_LIST}`, {
         method: 'DELETE', headers: authHeaders(),
         body: JSON.stringify({ question_ids: selectedQuestions.value })
       });
@@ -437,17 +453,24 @@ const showInfo = (msg) => { infoMessage.value = msg; setTimeout(() => { infoMess
 .header-titles h1 { font-size: 1.8rem; color: #1e293b; font-weight: 700; margin: 0; }
 .header-titles p { color: #64748b; margin: 0.2rem 0 0; }
 
-/* Toast */
+/* Toast (fixed overlay) */
 .toast {
-  padding: 0.8rem 1.2rem;
-  border-radius: 8px;
-  margin-bottom: 1rem;
-  font-weight: 500;
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 9999;
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-width: 420px;
+  pointer-events: none;
 }
-.error-toast { background: #fee2e2; color: #b91c1c; }
-.info-toast { background: #dcfce7; color: #15803d; }
-.slide-down-enter-active, .slide-down-leave-active { transition: all 0.25s ease; }
-.slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-12px); }
+.error-toast { background: #fee2e2; color: #b91c1c; border-left: 4px solid #b91c1c; }
+.info-toast  { background: #dcfce7; color: #15803d; border-left: 4px solid #22c55e; }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateX(60px); }
 
 /* Filters Card */
 .filters-card {
@@ -653,3 +676,4 @@ const showInfo = (msg) => { infoMessage.value = msg; setTimeout(() => { infoMess
 .confirm-btn.danger { background: #ef4444; }
 .confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
+

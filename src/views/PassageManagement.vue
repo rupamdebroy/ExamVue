@@ -1,20 +1,22 @@
-<template>
+﻿<template>
   <div class="passage-management">
     <div class="header-section">
       <div class="header-titles">
-        <h1>📖 Passage Management</h1>
+        <h1>ðŸ“– Passage Management</h1>
         <p>Create and manage reading passages for comprehension-style questions</p>
       </div>
       <button class="primary-btn" @click="openCreate">+ New Passage</button>
     </div>
 
-    <!-- Toasts -->
-    <transition name="slide-down">
-      <div class="toast error-toast" v-if="error">⚠️ {{ error }}</div>
-    </transition>
-    <transition name="slide-down">
-      <div class="toast info-toast" v-if="info">✅ {{ info }}</div>
-    </transition>
+    <!-- Toasts (fixed overlay) -->
+    <teleport to="body">
+      <transition name="toast-slide">
+        <div class="toast error-toast" v-if="error">âš ï¸ {{ error }}</div>
+      </transition>
+      <transition name="toast-slide">
+        <div class="toast info-toast" v-if="info">âœ… {{ info }}</div>
+      </transition>
+    </teleport>
 
     <!-- Filters -->
     <div class="filters-card">
@@ -35,7 +37,7 @@
         </div>
         <div class="filter-group search-group">
           <label>Search</label>
-          <input class="form-select" v-model="searchQuery" placeholder="Search passage titles…" />
+          <input class="form-select" v-model="searchQuery" placeholder="Search passage titlesâ€¦" />
         </div>
       </div>
     </div>
@@ -43,7 +45,7 @@
     <!-- List -->
     <div class="table-container">
       <div class="loading-overlay" v-if="loading">
-        <div class="spinner-ring"></div> Loading…
+        <div class="spinner-ring"></div> Loadingâ€¦
       </div>
       <table class="data-table" v-if="filteredPassages.length > 0">
         <thead>
@@ -66,22 +68,22 @@
             <td>
               <div class="topic-pill" v-if="p.subject_name">{{ p.subject_name }}</div>
               <div class="module-name" v-if="p.module_name">{{ p.module_name }}</div>
-              <span class="muted" v-else>—</span>
+              <span class="muted" v-else>â€”</span>
             </td>
             <td class="center">
               <span class="q-count" :class="{ none: p.question_count === 0 }">{{ p.question_count }}</span>
             </td>
             <td class="center muted-sm">{{ formatDate(p.passage_updated_at) }}</td>
             <td class="actions-cell">
-              <button class="act-btn view" @click="previewPassage(p)">👁 View</button>
-              <button class="act-btn edit" @click="openEdit(p)">✏️ Edit</button>
-              <button class="act-btn del" @click="promptDelete(p)" :disabled="p.question_count > 0" :title="p.question_count > 0 ? 'Unlink questions first' : 'Delete passage'">🗑️</button>
+              <button class="act-btn view" @click="previewPassage(p)">ðŸ‘ View</button>
+              <button class="act-btn edit" @click="openEdit(p)">âœï¸ Edit</button>
+              <button class="act-btn del" @click="promptDelete(p)" :disabled="p.question_count > 0" :title="p.question_count > 0 ? 'Unlink questions first' : 'Delete passage'">ðŸ—‘ï¸</button>
             </td>
           </tr>
         </tbody>
       </table>
       <div v-else-if="!loading" class="empty-state">
-        <div class="empty-icon">📄</div>
+        <div class="empty-icon">ðŸ“„</div>
         <div>No passages found. Click <strong>+ New Passage</strong> to create one.</div>
       </div>
     </div>
@@ -91,20 +93,20 @@
       <div class="form-modal">
         <div class="modal-header">
           <h3>{{ editingPassage ? 'Edit Passage' : 'Create New Passage' }}</h3>
-          <button class="close-btn" @click="showFormModal = false">✕</button>
+          <button class="close-btn" @click="showFormModal = false">âœ•</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
             <label>Module (optional)</label>
             <select class="form-select" v-model="form.passage_module_id" @change="form.passage_subject_id = ''">
-              <option value="">— None —</option>
+              <option value="">â€” None â€”</option>
               <option v-for="m in modules" :key="m.module_id" :value="m.module_id">{{ m.module_name }}</option>
             </select>
           </div>
           <div class="form-group">
             <label>Topic (optional)</label>
             <select class="form-select" v-model="form.passage_subject_id" :disabled="!form.passage_module_id">
-              <option value="">— None —</option>
+              <option value="">â€” None â€”</option>
               <option v-for="t in formTopics" :key="t.subject_id" :value="t.subject_id">{{ t.subject_name }}</option>
             </select>
           </div>
@@ -114,14 +116,14 @@
           </div>
           <div class="form-group">
             <label>Passage Text <span class="req">*</span></label>
-            <textarea class="form-select passage-textarea" v-model="form.passage_text" rows="12" placeholder="Paste or type your reading passage here…"></textarea>
+            <textarea class="form-select passage-textarea" v-model="form.passage_text" rows="12" placeholder="Paste or type your reading passage hereâ€¦"></textarea>
             <small class="char-count">{{ form.passage_text.length }} characters</small>
           </div>
         </div>
         <div class="modal-footer">
           <button class="cancel-btn" @click="showFormModal = false">Cancel</button>
           <button class="save-btn" :disabled="saving || !form.passage_title.trim() || !form.passage_text.trim()" @click="savePassage">
-            {{ saving ? 'Saving…' : editingPassage ? 'Update Passage' : 'Create Passage' }}
+            {{ saving ? 'Savingâ€¦' : editingPassage ? 'Update Passage' : 'Create Passage' }}
           </button>
         </div>
       </div>
@@ -132,13 +134,13 @@
       <div class="preview-modal">
         <div class="modal-header">
           <h3>{{ previewPassageData.passage_title }}</h3>
-          <button class="close-btn" @click="previewPassageData = null">✕</button>
+          <button class="close-btn" @click="previewPassageData = null">âœ•</button>
         </div>
         <div class="preview-body">
           <div class="passage-text-content">{{ previewPassageData.passage_text }}</div>
           <div class="preview-meta">
-            <span v-if="previewPassageData.subject_name">📁 {{ previewPassageData.subject_name }}</span>
-            <span>📝 {{ previewPassageData.question_count }} questions linked</span>
+            <span v-if="previewPassageData.subject_name">ðŸ“ {{ previewPassageData.subject_name }}</span>
+            <span>ðŸ“ {{ previewPassageData.question_count }} questions linked</span>
           </div>
         </div>
       </div>
@@ -147,12 +149,12 @@
     <!-- Delete Confirm Modal -->
     <div class="modal-overlay" v-if="passageToDelete" @click.self="passageToDelete = null">
       <div class="confirm-modal">
-        <div class="confirm-icon">🗑️</div>
+        <div class="confirm-icon">ðŸ—‘ï¸</div>
         <h3>Delete Passage</h3>
         <p>Delete <strong>"{{ passageToDelete.passage_title }}"</strong>?</p>
         <div class="confirm-actions">
           <button class="cancel-btn" @click="passageToDelete = null">Cancel</button>
-          <button class="confirm-btn" :disabled="deleting" @click="executeDelete">{{ deleting ? 'Deleting…' : 'Yes, Delete' }}</button>
+          <button class="confirm-btn" :disabled="deleting" @click="executeDelete">{{ deleting ? 'Deletingâ€¦' : 'Yes, Delete' }}</button>
         </div>
       </div>
     </div>
@@ -161,9 +163,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
-const API = `${API_BASE_URL}/admin`;
+
 const getToken = () => localStorage.getItem('tce_token');
 const authH = () => ({ 'Authorization': `Bearer ${getToken()}` });
 
@@ -205,8 +207,8 @@ onMounted(async () => {
 
 const loadDeps = async () => {
   const [mRes, tRes] = await Promise.all([
-    fetch(`${API}/modules.php`, { headers: authH() }),
-    fetch(`${API}/topics.php`,  { headers: authH() })
+    fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, { headers: authH() }),
+    fetch(`${API_ENDPOINTS.ADMIN_TOPICS}`,  { headers: authH() })
   ]);
   const mD = await mRes.json(); const tD = await tRes.json();
   if (mD.status === 'success') modules.value = mD.data;
@@ -218,7 +220,7 @@ const fetchPassages = async () => {
   const params = new URLSearchParams();
   if (filterModule.value)  params.set('module_id',  filterModule.value);
   if (filterSubject.value) params.set('subject_id', filterSubject.value);
-  const res  = await fetch(`${API}/passages.php?${params}`, { headers: authH() });
+  const res  = await fetch(`${API_ENDPOINTS.ADMIN_PASSAGES}?${params}`, { headers: authH() });
   const data = await res.json();
   if (data.status === 'success') passages.value = data.data;
   loading.value = false;
@@ -239,7 +241,7 @@ const openEdit = (p) => {
 const savePassage = async () => {
   saving.value = true;
   const body = { ...form.value };
-  let url = `${API}/passages.php`;
+  let url = `${API_ENDPOINTS.ADMIN_PASSAGES}`;
   let method = 'POST';
   if (editingPassage.value) { url += `?passage_id=${editingPassage.value.passage_id}`; method = 'PUT'; }
   const res  = await fetch(url, { method, headers: { ...authH(), 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -257,7 +259,7 @@ const promptDelete   = (p) => { passageToDelete.value = p; };
 
 const executeDelete = async () => {
   deleting.value = true;
-  const res  = await fetch(`${API}/passages.php?passage_id=${passageToDelete.value.passage_id}`, { method: 'DELETE', headers: authH() });
+  const res  = await fetch(`${API_ENDPOINTS.ADMIN_PASSAGES}?passage_id=${passageToDelete.value.passage_id}`, { method: 'DELETE', headers: authH() });
   const data = await res.json();
   deleting.value = false;
   passageToDelete.value = null;
@@ -265,8 +267,8 @@ const executeDelete = async () => {
   else showError(data.message);
 };
 
-const truncate   = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
-const formatDate = (d)    => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const truncate   = (s, n) => s && s.length > n ? s.slice(0, n) + 'â€¦' : (s || '');
+const formatDate = (d)    => d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'â€”';
 const showError  = (m)    => { error.value = m; setTimeout(() => error.value = '', 5000); };
 const showInfo   = (m)    => { info.value  = m; setTimeout(() => info.value  = '', 6000); };
 </script>
@@ -286,12 +288,24 @@ const showInfo   = (m)    => { info.value  = m; setTimeout(() => info.value  = '
 }
 .primary-btn:hover { transform: translateY(-2px); }
 
-/* Toast */
-.toast { padding: 0.8rem 1.2rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 500; }
-.error-toast { background: #fee2e2; color: #b91c1c; }
-.info-toast  { background: #dcfce7; color: #15803d; }
-.slide-down-enter-active, .slide-down-leave-active { transition: all 0.25s ease; }
-.slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-12px); }
+/* Toast (fixed overlay) */
+.toast {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 9999;
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-width: 420px;
+  pointer-events: none;
+}
+.error-toast { background: #fee2e2; color: #b91c1c; border-left: 4px solid #b91c1c; }
+.info-toast  { background: #dcfce7; color: #15803d; border-left: 4px solid #22c55e; }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateX(60px); }
 
 /* Filters */
 .filters-card { background: white; border-radius: 12px; padding: 1.2rem 1.5rem; margin-bottom: 1rem; box-shadow: 0 2px 10px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
@@ -375,3 +389,4 @@ const showInfo   = (m)    => { info.value  = m; setTimeout(() => info.value  = '
 .confirm-btn { padding: 0.6rem 1.4rem; border-radius: 8px; border: none; background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; font-weight: 700; cursor: pointer; }
 .confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
+

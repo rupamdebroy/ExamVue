@@ -17,7 +17,8 @@ const layoutClass = computed(() => {
 </template>
 
 <style>
-/* Base global styles */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 body {
   margin: 0;
   padding: 0;
@@ -29,6 +30,4 @@ body {
 * {
   box-sizing: border-box;
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 </style>

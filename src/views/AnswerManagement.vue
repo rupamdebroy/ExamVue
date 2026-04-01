@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="answer-management">
     <div class="header-section">
       <div class="header-titles">
@@ -41,8 +41,8 @@
           <tr v-for="a in answersList" :key="a.answer_id" :class="{'correct-row': a.answer_isright}">
             <td>{{ a.answer_position }}</td>
             <td>
-                <span v-if="a.answer_isright" class="correct-badge">✓ Correct</span>
-                <span v-else class="wrong-badge">✗ Wrong</span>
+                <span v-if="a.answer_isright" class="correct-badge">âœ“ Correct</span>
+                <span v-else class="wrong-badge">âœ— Wrong</span>
             </td>
             <td class="desc-cell" :title="a.answer_description">
                 {{ formatTruncated(a.answer_description, 150) }}
@@ -81,7 +81,7 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import AnswerFormModal from '../components/AnswerFormModal.vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -111,7 +111,7 @@ onMounted(() => {
 const fetchQuestionContext = async () => {
     try {
         const token = localStorage.getItem('tce_token');
-        const response = await fetch(`${API_BASE_URL}/admin/questions.php?question_id=${questionId.value}`, {
+        const response = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS}?question_id=${questionId.value}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         const result = await response.json();
@@ -131,7 +131,7 @@ const fetchAnswers = async () => {
   try {
     const token = localStorage.getItem('tce_token');
     
-    const response = await fetch(`${API_BASE_URL}/admin/answers.php?question_id=${questionId.value}`, {
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_ANSWERS}?question_id=${questionId.value}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     
@@ -152,8 +152,8 @@ const saveAnswer = async (formData) => {
   try {
     const token = localStorage.getItem('tce_token');
     const url = isEditing.value 
-      ? `${API_BASE_URL}/admin/answers.php?answer_id=${selectedAnswer.value.answer_id}` 
-      : `${API_BASE_URL}/admin/answers.php`;
+      ? `${API_ENDPOINTS.ADMIN_ANSWERS}?answer_id=${selectedAnswer.value.answer_id}` 
+      : `${API_ENDPOINTS.ADMIN_ANSWERS}`;
       
     const method = isEditing.value ? 'PUT' : 'POST';
     
@@ -188,7 +188,7 @@ const confirmDelete = async (answer) => {
   if (confirm(`Are you sure you want to delete this option?`)) {
     try {
       const token = localStorage.getItem('tce_token');
-      const response = await fetch(`${API_BASE_URL}/admin/answers.php?answer_id=${answer.answer_id}`, {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN_ANSWERS}?answer_id=${answer.answer_id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -313,3 +313,4 @@ const showInfo = (msg) => { infoMessage.value = msg; setTimeout(() => { infoMess
 .error { background: #fee2e2; color: #b91c1c; padding: 1rem; border-radius: 8px; text-align: center; }
 .info { background: #e0f2fe; color: #0369a1; padding: 1rem; border-radius: 8px; text-align: center; font-weight: 500; border-left: 4px solid #0ea5e9; }
 </style>
+

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="question-management">
     <!-- Header -->
     <div class="header-section">
@@ -8,10 +8,10 @@
       </div>
       <div class="header-actions">
         <button class="action-btn export-btn" @click="exportCSV" title="Export current questions filter to CSV">
-          <span>📥</span> Export CSV
+          <span>ðŸ“¥</span> Export CSV
         </button>
         <button class="action-btn import-btn" @click="triggerImport" title="Import questions from CSV">
-          <span>📤</span> Import CSV
+          <span>ðŸ“¤</span> Import CSV
         </button>
         <input type="file" ref="fileInput" @change="handleImport" accept=".csv" class="hidden-file-input" />
         <button class="primary-btn" @click="isCreatingNew = true; editingQuestionId = null; pagination.page = 1;">
@@ -20,13 +20,15 @@
       </div>
     </div>
 
-    <!-- Toast Messages -->
-    <transition name="slide-down">
-      <div class="toast error-toast" v-if="error">⚠️ {{ error }}</div>
-    </transition>
-    <transition name="slide-down">
-      <div class="toast info-toast" v-if="infoMessage">✅ {{ infoMessage }}</div>
-    </transition>
+    <!-- Toast Messages (fixed overlay) -->
+    <teleport to="body">
+      <transition name="toast-slide">
+        <div class="toast error-toast" v-if="error">âš ï¸ {{ error }}</div>
+      </transition>
+      <transition name="toast-slide">
+        <div class="toast info-toast" v-if="infoMessage">âœ… {{ infoMessage }}</div>
+      </transition>
+    </teleport>
 
     <!-- Filters Card -->
     <div class="filters-card">
@@ -65,8 +67,8 @@
         <div class="filter-group filter-search">
           <label>Search</label>
           <div class="search-wrap">
-            <span class="search-icon">🔍</span>
-            <input type="text" v-model="searchQuery" @input="debouncedSearch" placeholder="Search question text…" class="form-select search-input" />
+            <span class="search-icon">ðŸ”</span>
+            <input type="text" v-model="searchQuery" @input="debouncedSearch" placeholder="Search question textâ€¦" class="form-select search-input" />
           </div>
         </div>
 
@@ -86,7 +88,7 @@
     <div class="status-bar" v-if="!loading">
       <span v-if="pagination.total > 0">
         Showing <strong>{{ questionsList.length }}</strong> of <strong>{{ pagination.total }}</strong> questions
-        — Page <strong>{{ pagination.page }}</strong> / {{ pagination.total_pages }}
+        â€” Page <strong>{{ pagination.page }}</strong> / {{ pagination.total_pages }}
       </span>
       <span v-else>No questions found for current filters.</span>
     </div>
@@ -95,7 +97,7 @@
     <div class="table-container">
       <div class="loading-overlay" v-if="loading">
         <div class="spinner-ring"></div>
-        <span>Loading…</span>
+        <span>Loadingâ€¦</span>
       </div>
 
 
@@ -137,9 +139,9 @@
             </td>
             <td class="actions-cell">
               <button class="act-btn edit" @click="openInlineEdit(q.question_id)" :class="{'active': editingQuestionId === q.question_id}" title="Edit Question & Answers">
-                {{ editingQuestionId === q.question_id ? 'Close' : '✏️ Edit' }}
+                {{ editingQuestionId === q.question_id ? 'Close' : 'âœï¸ Edit' }}
               </button>
-              <button class="act-btn del" @click="promptDelete(q)" title="Delete Question" v-if="editingQuestionId !== q.question_id">🗑️</button>
+              <button class="act-btn del" @click="promptDelete(q)" title="Delete Question" v-if="editingQuestionId !== q.question_id">ðŸ—‘ï¸</button>
             </td>
           </tr>
           </template>
@@ -147,27 +149,27 @@
       </table>
 
       <div v-else-if="!loading" class="empty-state">
-        <div class="empty-icon">🗂️</div>
+        <div class="empty-icon">ðŸ—‚ï¸</div>
         <div>No questions found{{ searchQuery ? ` matching "${searchQuery}"` : ' for the selected filters' }}.</div>
       </div>
     </div>
 
     <!-- Pagination -->
     <div class="pagination" v-if="pagination.total_pages > 1">
-      <button class="page-btn" :disabled="pagination.page <= 1" @click="changePage(1)">«</button>
-      <button class="page-btn" :disabled="pagination.page <= 1" @click="changePage(pagination.page - 1)">‹</button>
+      <button class="page-btn" :disabled="pagination.page <= 1" @click="changePage(1)">Â«</button>
+      <button class="page-btn" :disabled="pagination.page <= 1" @click="changePage(pagination.page - 1)">â€¹</button>
       <span v-for="page in visiblePages" :key="page">
         <button v-if="page !== '...'" class="page-btn" :class="{ active: page === pagination.page }" @click="changePage(page)">{{ page }}</button>
-        <span v-else class="page-ellipsis">…</span>
+        <span v-else class="page-ellipsis">â€¦</span>
       </span>
-      <button class="page-btn" :disabled="pagination.page >= pagination.total_pages" @click="changePage(pagination.page + 1)">›</button>
-      <button class="page-btn" :disabled="pagination.page >= pagination.total_pages" @click="changePage(pagination.total_pages)">»</button>
+      <button class="page-btn" :disabled="pagination.page >= pagination.total_pages" @click="changePage(pagination.page + 1)">â€º</button>
+      <button class="page-btn" :disabled="pagination.page >= pagination.total_pages" @click="changePage(pagination.total_pages)">Â»</button>
     </div>
 
     <!-- Delete Confirmation Modal -->
     <div class="modal-overlay" v-if="questionToDelete" @click.self="questionToDelete = null">
       <div class="confirm-modal">
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon">âš ï¸</div>
         <h3>Delete Question</h3>
         <p>Delete question <strong>#{{ questionToDelete?.question_id }}</strong>?</p>
         <p class="confirm-note" v-html="'<em>' + formatTruncated(stripHtml(questionToDelete?.question_description), 80) + '</em>'"></p>
@@ -175,7 +177,7 @@
         <div class="confirm-actions">
           <button class="cancel-btn" @click="questionToDelete = null">Cancel</button>
           <button class="confirm-btn" :disabled="deleting" @click="executeDelete">
-            {{ deleting ? 'Deleting…' : 'Yes, Delete' }}
+            {{ deleting ? 'Deletingâ€¦' : 'Yes, Delete' }}
           </button>
         </div>
       </div>
@@ -203,10 +205,10 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import QuestionInlineEditor from '../components/QuestionInlineEditor.vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const router = useRouter();
-const API = `${API_BASE_URL}/admin`;
+
 const getToken = () => localStorage.getItem('tce_token');
 const authHeader = () => ({ 'Authorization': `Bearer ${getToken()}` });
 
@@ -297,8 +299,8 @@ const fetchDependencies = async () => {
   try {
     const headers = authHeader();
     const [modRes, topRes] = await Promise.all([
-      fetch(`${API}/modules.php`, { headers }),
-      fetch(`${API}/topics.php`, { headers })
+      fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, { headers }),
+      fetch(`${API_ENDPOINTS.ADMIN_TOPICS}`, { headers })
     ]);
     const modData = await modRes.json();
     const topData = await topRes.json();
@@ -320,7 +322,7 @@ const fetchQuestions = async () => {
     if (filterType.value) params.append('type', filterType.value);
     if (searchQuery.value) params.append('search', searchQuery.value);
 
-    const res = await fetch(`${API}/questions.php?${params}`, { headers: authHeader() });
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS}?${params}`, { headers: authHeader() });
     const result = await res.json();
     if (result.status === 'success') {
       questionsList.value = result.data || [];
@@ -336,8 +338,8 @@ const saveQuestion = async (formData) => {
   try {
     const isEditingMode = !!formData.question_id;
     const url = isEditingMode
-      ? `${API}/questions.php?question_id=${formData.question_id}`
-      : `${API}/questions.php`;
+      ? `${API_ENDPOINTS.ADMIN_QUESTIONS}?question_id=${formData.question_id}`
+      : `${API_ENDPOINTS.ADMIN_QUESTIONS}`;
     const res = await fetch(url, {
       method: isEditingMode ? 'PUT' : 'POST',
       headers: { ...authHeader(), 'Content-Type': 'application/json' },
@@ -364,7 +366,7 @@ const executeDelete = async () => {
   if (!questionToDelete.value) return;
   deleting.value = true;
   try {
-    const res = await fetch(`${API}/questions.php?question_id=${questionToDelete.value.question_id}`, {
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_QUESTIONS}?question_id=${questionToDelete.value.question_id}`, {
       method: 'DELETE', headers: authHeader()
     });
     const result = await res.json();
@@ -383,7 +385,7 @@ const executeDelete = async () => {
 
 // Import/Export CSV Logic
 const exportCSV = () => {
-  let url = `${API}/export_questions.php?token=${getToken()}`;
+  let url = `${API_ENDPOINTS.ADMIN_EXPORT_QUESTIONS}?token=${getToken()}`;
   if (filterModuleId.value) url += `&module_id=${filterModuleId.value}`;
   if (filterTopicId.value) url += `&subject_id=${filterTopicId.value}`;
   window.open(url, '_blank');
@@ -402,7 +404,7 @@ const handleImport = async (event) => {
   loading.value = true;
   
   try {
-    const res = await fetch(`${API}/import_questions.php`, {
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_IMPORT_QUESTIONS}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${getToken()}` },
       body: formData
@@ -428,8 +430,8 @@ const getTypeName = (typeId) => ({ 1: 'MCSA', 2: 'MCMA', 3: 'Text', 4: 'Order' }
 const stripHtml = (str) => str ? str.replace(/<[^>]*>/g, '') : '';
 
 const formatTruncated = (str, len) => {
-  if (!str) return '—';
-  return str.length > len ? str.slice(0, len) + '…' : str;
+  if (!str) return 'â€”';
+  return str.length > len ? str.slice(0, len) + 'â€¦' : str;
 };
 
 const openInlineEdit = (id) => { 
@@ -474,12 +476,24 @@ const showInfo = (msg) => { infoMessage.value = msg; setTimeout(() => { infoMess
 }
 .primary-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(79,70,229,0.35); }
 
-/* Toast */
-.toast { padding: 0.8rem 1.2rem; border-radius: 8px; margin-bottom: 1rem; font-weight: 500; }
-.error-toast { background: #fee2e2; color: #b91c1c; }
-.info-toast { background: #dcfce7; color: #15803d; }
-.slide-down-enter-active, .slide-down-leave-active { transition: all 0.25s ease; }
-.slide-down-enter-from, .slide-down-leave-to { opacity: 0; transform: translateY(-12px); }
+/* Toast (fixed overlay) */
+.toast {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 9999;
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-width: 420px;
+  pointer-events: none;
+}
+.error-toast { background: #fee2e2; color: #b91c1c; border-left: 4px solid #b91c1c; }
+.info-toast  { background: #dcfce7; color: #15803d; border-left: 4px solid #22c55e; }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateX(60px); }
 
 /* Filters */
 .filters-card {
@@ -634,3 +648,4 @@ const showInfo = (msg) => { infoMessage.value = msg; setTimeout(() => { infoMess
 .confirm-btn:hover:not(:disabled) { opacity: 0.9; }
 .confirm-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
+

@@ -253,14 +253,15 @@ const showInfo = (msg) => {
 };
 
 const saveTest = async (testData) => {
+  // Create flow is handled inside TestFormModal (POST + redirect).
+  // This handler is only called for UPDATE (isEditing === true).
+  if (!isEditing.value) return;
+
   try {
     const token = localStorage.getItem('tce_token');
-    const url = isEditing.value
-      ? `${API_ENDPOINTS.ADMIN_MANAGE_TEST}?test_id=${selectedTest.value.test_id}`
-      : API_ENDPOINTS.ADMIN_MANAGE_TEST;
-
+    const url = `${API_ENDPOINTS.ADMIN_MANAGE_TEST}?test_id=${selectedTest.value.test_id}`;
     const response = await fetch(url, {
-      method: isEditing.value ? 'PUT' : 'POST',
+      method: 'PUT',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
@@ -271,7 +272,7 @@ const saveTest = async (testData) => {
     const result = await response.json();
     if (result.status === 'success') {
       closeModal();
-      if (result.action_taken === 'expired') showInfo(result.message);
+      showInfo(result.message || 'Test updated successfully.');
       fetchTests();
     } else {
       showError(result.message || 'Failed to save test');

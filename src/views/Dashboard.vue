@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const router = useRouter()
 const user = ref(JSON.parse(localStorage.getItem('tce_user') || '{}'))
@@ -32,7 +32,7 @@ const fetchDashboardData = async () => {
 
   try {
     // 1. Fetch User Data
-    const userRes = await fetch(`${API_BASE_URL}/user.php`, {
+    const userRes = await fetch(API_ENDPOINTS.USER_PROFILE, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
@@ -53,7 +53,7 @@ const fetchDashboardData = async () => {
     }
 
     // 2. Fetch Tests
-    const testsRes = await fetch(`${API_BASE_URL}/tests.php`, {
+    const testsRes = await fetch(API_ENDPOINTS.TEST_LIST, {
       headers: {
         'Authorization': `Bearer ${token}`
       }

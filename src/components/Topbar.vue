@@ -170,12 +170,15 @@ onMounted(() => {
   .topbar {
     padding: 1rem;
   }
+
   .user-info {
     display: none;
   }
+
   .user-profile {
     padding: 0;
   }
+
   .user-profile:hover {
     background: transparent;
   }

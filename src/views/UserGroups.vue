@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const groups = ref([])
 const isLoading = ref(true)
@@ -13,7 +13,7 @@ const searchQuery = ref('')
 const fetchGroups = async () => {
   const token = localStorage.getItem('tce_token')
   try {
-    const res = await fetch(`${API_BASE_URL}/user_groups.php`, {
+    const res = await fetch(API_ENDPOINTS.USER_GROUPS, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await res.json()
@@ -37,7 +37,7 @@ const toggleSubscription = async (group) => {
   group.subscribed = !group.subscribed
   
   try {
-    const res = await fetch(`${API_BASE_URL}/user_groups.php`, {
+    const res = await fetch(API_ENDPOINTS.USER_GROUPS, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,

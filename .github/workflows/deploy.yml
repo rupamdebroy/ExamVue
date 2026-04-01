@@ -1,5 +1,4 @@
-name: Vue Deploy (test.rundoc.in)
-
+name: Vue Deploy
 on:
   push:
     branches:

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -28,11 +28,25 @@ const currentQ = ref(null)
 const selectedAnswers = ref([])
 const answerText = ref('')
 const isSaving = ref(false)
-const questionLoading = ref(false)
-const passageExpanded = ref(true)  // show passage by default when entering a passage question
+const autoSaveStatus = ref('')   // '' | 'saving' | 'saved'
+let autoSaveDebounceTimer = null
+const passageExpanded = ref(true)
 
-// Palette state
-const palette = ref([])
+// â”€â”€â”€ ALL QUESTIONS CACHE (fetched once at start) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const allQuestions = ref([])   // array of question objects from bulk API
+
+// Palette state â€” derived from allQuestions, no separate API call needed
+const palette = computed(() => {
+  return allQuestions.value.map(q => {
+    const isAnswered = (q.current_selection && q.current_selection.length > 0) ||
+                       (q.answer_text && q.answer_text.trim().length > 0)
+    let status
+    if (!q._visited) status = 'not_visited'
+    else if (isAnswered) status = 'answered'
+    else status = 'not_answered'
+    return { question_num: q.question_num, status, marked: !!q.marked }
+  })
+})
 
 // Timer
 const timeRemaining = ref(0)
@@ -47,13 +61,11 @@ const warnings = ref(0)
 const showWarningModal = ref(false)
 const maxWarnings = 3
 
-const API = API_BASE_URL
-
 function authHeaders() {
   return { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
 
-// ─── Timer ────────────────────────────────────────────────
+// â”€â”€â”€ Timer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function startTimer(seconds) {
   timeRemaining.value = seconds
   clearInterval(timerInterval)
@@ -77,7 +89,7 @@ const formattedTime = computed(() => {
 
 const timerUrgent = computed(() => timeRemaining.value <= 60 && timeRemaining.value > 0)
 
-// ─── Fullscreen Toggle ──────────────────────────────────────
+// â”€â”€â”€ Fullscreen Toggle â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function toggleFullScreen() {
   if (!document.fullscreenElement) {
     try {
@@ -94,12 +106,12 @@ async function toggleFullScreen() {
   }
 }
 
-// ─── Start / Resume ────────────────────────────────────────
+// â”€â”€â”€ Start / Resume â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function startTest(password = '') {
   phase.value = 'loading'
   try {
     const isRepeating = route.query.repeat === 'true'
-    const res = await fetch(`${API}/test_start.php`, {
+    const res = await fetch(API_ENDPOINTS.TEST_START, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ test_id, password, repeat: isRepeating })
@@ -123,12 +135,18 @@ async function startTest(password = '') {
     testMeta.value = data
     testuser_id.value = data.testuser_id
     startTimer(data.time_remaining_seconds)
-    
-    // Fetch palette
-    await loadPalette()
-    
+
+    // â”€â”€ Single bulk fetch â€” replaces all per-question GETs â”€â”€
+    await loadAllQuestions()
+
     phase.value = 'taking'
-    await loadQuestion()
+
+    // Open first unanswered question (or Q1 if all answered)
+    const firstUnanswered = allQuestions.value.find(
+      q => !q.current_selection?.length && !q.answer_text?.trim()
+    )
+    showQuestion(firstUnanswered ? firstUnanswered.question_num : 1)
+
   } catch (e) {
     errorMsg.value = 'Network error. Please try again.'
     phase.value = 'error'
@@ -147,116 +165,144 @@ async function submitPassword() {
   }
 }
 
-// ─── Palette Loading & Stats ───────────────────────────────
-async function loadPalette() {
-  try {
-    const res = await fetch(`${API}/test_palette.php?testuser_id=${testuser_id.value}`, { headers: authHeaders() })
-    const data = await res.json()
-    if (data.status === 'success') {
-      palette.value = data.palette
-    }
-  } catch(e) {
-    console.warn("Failed to load palette", e)
+// â”€â”€â”€ Bulk Question Load (single round-trip) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function loadAllQuestions() {
+  const res = await fetch(
+    `${API_ENDPOINTS.TEST_QUESTIONS}?testuser_id=${testuser_id.value}`,
+    { headers: authHeaders() }
+  )
+  const data = await res.json()
+  if (data.status !== 'success') {
+    throw new Error(data.message || 'Failed to load questions')
+  }
+  allQuestions.value = data.questions.map(q => ({
+    ...q,
+    // Pre-mark resumed questions as visited so palette shows correct state
+    _visited: !!(q.current_selection?.length || q.answer_text?.trim())
+  }))
+  // Sync timer from server (authoritative)
+  if (Math.abs(data.time_remaining_seconds - timeRemaining.value) > 5) {
+    timeRemaining.value = data.time_remaining_seconds
   }
 }
 
+// â”€â”€â”€ Show Question (pure client-side, zero network) â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function showQuestion(questionNum) {
+  const q = allQuestions.value.find(q => q.question_num === questionNum)
+  if (!q) return
+
+  // Cancel any pending auto-save for the outgoing question
+  clearTimeout(autoSaveDebounceTimer)
+  autoSaveStatus.value = ''
+
+  q._visited = true
+
+  currentQ.value = { ...q, total_questions: allQuestions.value.length }
+  selectedAnswers.value = [...(q.current_selection || [])]
+  answerText.value = q.answer_text || ''
+  passageExpanded.value = true
+  showMobilePanel.value = false
+}
+
+// â”€â”€â”€ Palette Stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const stats = computed(() => {
-  let answered = 0, not_answered = 0, not_visited = 0, marked = 0, marked_answered = 0;
+  let answered = 0, not_answered = 0, not_visited = 0, marked = 0, marked_answered = 0
   palette.value.forEach(p => {
-    if (p.status === 'not_visited') not_visited++;
+    if (p.status === 'not_visited') not_visited++
     else if (p.marked) {
-      if (p.status === 'answered') marked_answered++;
-      else marked++;
+      if (p.status === 'answered') marked_answered++
+      else marked++
     } else {
-      if (p.status === 'answered') answered++;
-      else not_answered++;
+      if (p.status === 'answered') answered++
+      else not_answered++
     }
-  });
-  return { answered, not_answered, not_visited, marked, marked_answered };
+  })
+  return { answered, not_answered, not_visited, marked, marked_answered }
 })
 
 function getPaletteClass(p) {
-  let cls = [];
-  if (currentQ.value && currentQ.value.question_num === p.question_num) cls.push('active');
-  if (p.status === 'not_visited') cls.push('not-visited');
+  let cls = []
+  if (currentQ.value && currentQ.value.question_num === p.question_num) cls.push('active')
+  if (p.status === 'not_visited') cls.push('not-visited')
   else if (p.marked) {
-     cls.push(p.status === 'answered' ? 'marked-answered' : 'marked');
+     cls.push(p.status === 'answered' ? 'marked-answered' : 'marked')
   } else {
-     cls.push(p.status === 'answered' ? 'answered' : 'not-answered');
+     cls.push(p.status === 'answered' ? 'answered' : 'not-answered')
   }
-  return cls.join(' ');
+  return cls.join(' ')
 }
 
-// ─── Load Question ──────────────────────────────────────────
-async function loadQuestion(questionNum = 0) {
-  questionLoading.value = true
-  try {
-    const url = `${API}/test_question.php?testuser_id=${testuser_id.value}` +
-                (questionNum > 0 ? `&question_num=${questionNum}` : '')
-    const res = await fetch(url, { headers: authHeaders() })
-    const data = await res.json()
-
-    if (data.all_answered) {
-      if (questionNum === 0) {
-         await loadQuestion(1);
-         return;
-      }
-    }
-    if (data.status !== 'success') {
-      errorMsg.value = data.message || 'Failed to load question'
-      phase.value = 'error'
-      return
-    }
-    currentQ.value = data
-    selectedAnswers.value = [...(data.current_selection || [])]
-    answerText.value = data.answer_text || ''
-    
-    const pItem = palette.value.find(p => p.question_num === currentQ.value.question_num);
-    if (pItem && pItem.status === 'not_visited') {
-       pItem.status = 'not_answered';
-    }
-
-    if (Math.abs(data.time_remaining_seconds - timeRemaining.value) > 5) {
-      timeRemaining.value = data.time_remaining_seconds
-    }
-    showMobilePanel.value = false;
-  } catch (e) {
-    errorMsg.value = 'Network error loading question.'
-    phase.value = 'error'
-  } finally {
-    questionLoading.value = false
-  }
-}
-
-// ─── Answer Helpers ────────────────────────────────────────
+// â”€â”€â”€ Answer Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function toggleMCSA(answerId) {
   selectedAnswers.value = [answerId]
+  triggerAutoSave()
 }
 
 function toggleMCMA(answerId) {
   const idx = selectedAnswers.value.indexOf(answerId)
   if (idx === -1) selectedAnswers.value.push(answerId)
   else selectedAnswers.value.splice(idx, 1)
+  triggerAutoSave()
 }
 
 function clearResponse() {
   selectedAnswers.value = []
   answerText.value = ""
+  triggerAutoSave()
 }
 
-// ─── Save + Navigate ────────────────────────────────────────
-async function saveCurrentAnswer(isMarked = false) {
+// â”€â”€â”€ Auto-Save Logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+function triggerAutoSave(debounced = false) {
   if (!currentQ.value) return
-  
-  const pItem = palette.value.find(p => p.question_num === currentQ.value.question_num);
-  const isAnswered = selectedAnswers.value.length > 0 || answerText.value.trim().length > 0;
-  
-  if (pItem) {
-     pItem.status = isAnswered ? 'answered' : 'not_answered';
-     pItem.marked = isMarked;
+  clearTimeout(autoSaveDebounceTimer)
+  autoSaveStatus.value = 'saving'
+  autoSaveDebounceTimer = setTimeout(() => performAutoSave(), debounced ? 600 : 80)
+}
+
+async function performAutoSave() {
+  if (!currentQ.value || isSaving.value) return
+
+  // Write back to allQuestions cache so palette stays reactive
+  const cq = allQuestions.value.find(q => q.question_num === currentQ.value.question_num)
+  if (cq) {
+    cq.current_selection = [...selectedAnswers.value]
+    cq.answer_text = answerText.value
   }
 
-  await fetch(`${API}/test_answer.php`, {
+  try {
+    await fetch(API_ENDPOINTS.TEST_SAVE_ANSWER, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        testlog_id: currentQ.value.testlog_id,
+        selected_answers: selectedAnswers.value,
+        answer_text: answerText.value,
+        marked: currentQ.value.marked || false
+      })
+    })
+    autoSaveStatus.value = 'saved'
+    setTimeout(() => { autoSaveStatus.value = '' }, 2000)
+  } catch (e) {
+    autoSaveStatus.value = ''
+    console.warn('Auto-save failed', e)
+  }
+}
+
+// â”€â”€â”€ Save + Navigate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+async function saveCurrentAnswer(isMarked = false) {
+  if (!currentQ.value) return
+  clearTimeout(autoSaveDebounceTimer)
+  autoSaveStatus.value = ''
+
+  // Update local cache
+  const cq = allQuestions.value.find(q => q.question_num === currentQ.value.question_num)
+  if (cq) {
+    cq.current_selection = [...selectedAnswers.value]
+    cq.answer_text = answerText.value
+    cq.marked = isMarked
+  }
+
+  await fetch(API_ENDPOINTS.TEST_SAVE_ANSWER, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
@@ -273,7 +319,7 @@ async function markAndNext() {
   isSaving.value = true
   try {
     await saveCurrentAnswer(true)
-    await goToNextOrFirst()
+    goToNextOrFirst()
   } finally {
     isSaving.value = false
   }
@@ -284,35 +330,30 @@ async function saveAndNext() {
   isSaving.value = true
   try {
     await saveCurrentAnswer(false)
-    await goToNextOrFirst()
+    goToNextOrFirst()
   } finally {
     isSaving.value = false
   }
 }
 
-async function goToNextOrFirst() {
-    const nextNum = currentQ.value.question_num + 1
-    if (nextNum > currentQ.value.total_questions) {
-      await loadQuestion(1)
-    } else {
-      await loadQuestion(nextNum)
-    }
+function goToNextOrFirst() {
+  const nextNum = currentQ.value.question_num + 1
+  showQuestion(nextNum > allQuestions.value.length ? 1 : nextNum)
 }
 
 async function goToQuestion(num) {
   if (!currentQ.value || isSaving.value || num === currentQ.value.question_num) return
   isSaving.value = true
   try {
-    const currentPItem = palette.value.find(p => p.question_num === currentQ.value.question_num);
-    const markedState = currentPItem ? currentPItem.marked : false;
-    await saveCurrentAnswer(markedState)
-    await loadQuestion(num)
+    const cq = allQuestions.value.find(q => q.question_num === currentQ.value.question_num)
+    await saveCurrentAnswer(cq ? cq.marked : false)
+    showQuestion(num)
   } finally {
     isSaving.value = false
   }
 }
 
-// ─── Submit / End ──────────────────────────────────────────
+// â”€â”€â”€ Submit / End â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function confirmSubmit() {
   showSubmitModal.value = true;
 }
@@ -321,8 +362,8 @@ async function submitTest() {
   if (isSaving.value) return
   isSaving.value = true
   try {
-    const currentPItem = palette.value.find(p => p.question_num === currentQ.value.question_num);
-    await saveCurrentAnswer(currentPItem ? currentPItem.marked : false)
+    const cq = allQuestions.value.find(q => q.question_num === currentQ.value.question_num)
+    await saveCurrentAnswer(cq ? cq.marked : false)
     phase.value = 'submitting'
     await finish()
   } finally {
@@ -337,7 +378,7 @@ async function autoSubmit() {
 
 async function finish() {
   try {
-    await fetch(`${API}/test_end.php`, {
+    await fetch(API_ENDPOINTS.TEST_SUBMIT, {
       method: 'POST',
       headers: authHeaders(),
       body: JSON.stringify({ testuser_id: testuser_id.value })
@@ -350,7 +391,7 @@ async function finish() {
   }
 }
 
-// ─── Proctoring / Anti-Cheat ──────────────────────────────
+// â”€â”€â”€ Proctoring / Anti-Cheat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function handleVisibilityChange() {
   if (phase.value !== 'taking') return
   if (document.visibilityState === 'hidden') {
@@ -384,15 +425,15 @@ onUnmounted(() => {
     <!-- Loading / Progress Screens -->
     <div v-if="phase === 'loading'" class="center-screen">
       <div class="spinner lg"></div>
-      <p>Preparing your test portal…</p>
+      <p>Preparing your test portalâ€¦</p>
     </div>
     <div v-else-if="phase === 'submitting'" class="center-screen">
       <div class="spinner lg"></div>
-      <p>Submitting your test securely…</p>
+      <p>Submitting your test securelyâ€¦</p>
     </div>
     <div v-else-if="phase === 'error' || phase === 'password'" class="center-screen">
       <div class="info-card">
-        <div class="card-icon">{{ phase === 'password' ? '🔒' : '⚠️' }}</div>
+        <div class="card-icon">{{ phase === 'password' ? 'ðŸ”’' : 'âš ï¸' }}</div>
         <h2>{{ phase === 'password' ? 'Password Required' : 'Something went wrong' }}</h2>
         <p v-if="phase === 'error'">{{ errorMsg }}</p>
         <p v-else>This test is protected by an instructor password.</p>
@@ -422,7 +463,7 @@ onUnmounted(() => {
             {{ isFullScreen ? 'Exit Full Screen' : 'Switch Full Screen' }}
           </button>
           <!-- Mobile Hamburger -->
-          <button class="mobile-menu-btn sm:hidden" @click="showMobilePanel = !showMobilePanel">☰</button>
+          <button class="mobile-menu-btn sm:hidden" @click="showMobilePanel = !showMobilePanel">â˜°</button>
         </div>
       </header>
 
@@ -439,7 +480,7 @@ onUnmounted(() => {
         
         <!-- LEFT CONTENT -->
         <main class="main-content">
-          <div class="content-scroll" v-if="!questionLoading && currentQ">
+          <div class="content-scroll" v-if="currentQ">
             <!-- Question Meta Bar -->
             <div class="q-header-bar">
               <span class="q-number">Question No. {{ currentQ.question_num }}</span>
@@ -468,11 +509,11 @@ onUnmounted(() => {
             <div class="passage-panel" v-if="currentQ.passage_id">
               <div class="passage-header" @click="passageExpanded = !passageExpanded">
                 <div class="passage-header-left">
-                  <span class="passage-icon">📖</span>
+                  <span class="passage-icon">ðŸ“–</span>
                   <span class="passage-title-text">{{ currentQ.passage_title || 'Reading Passage' }}</span>
                   <span class="passage-tag">Comprehension</span>
                 </div>
-                <button class="passage-toggle">{{ passageExpanded ? '▲ Hide' : '▼ Read Passage' }}</button>
+                <button class="passage-toggle">{{ passageExpanded ? 'â–² Hide' : 'â–¼ Read Passage' }}</button>
               </div>
               <div class="passage-body" v-show="passageExpanded">
                 <div class="passage-text">{{ currentQ.passage_text }}</div>
@@ -499,9 +540,10 @@ onUnmounted(() => {
                 </label>
               </div>
 
-               <!-- TEXT -->
+               <!-- TEXT (debounced auto-save on input) -->
                <div class="q-options" v-else-if="currentQ.question_type === 'text'">
-                  <textarea v-model="answerText" rows="6" class="text-answer-box" placeholder="Type your answer here..."></textarea>
+                  <textarea v-model="answerText" rows="6" class="text-answer-box" placeholder="Type your answer here..."
+                            @input="triggerAutoSave(true)"></textarea>
                </div>
             </div>
           </div>
@@ -512,11 +554,15 @@ onUnmounted(() => {
           <!-- Bottom Action Buttons (Left side panel footer) -->
           <div class="content-footer-actions">
             <div class="left-actions">
-              <button class="btn-light-blue" @click="markAndNext" :disabled="isSaving || questionLoading">Mark for Review & Next</button>
-              <button class="btn-light-blue" @click="clearResponse" :disabled="isSaving || questionLoading">Clear Response</button>
+              <button class="btn-light-blue" @click="markAndNext" :disabled="isSaving">Mark for Review & Next</button>
+              <button class="btn-light-blue" @click="clearResponse" :disabled="isSaving">Clear Response</button>
+            </div>
+            <div class="autosave-indicator" :class="autoSaveStatus">
+              <span v-if="autoSaveStatus === 'saving'"><span class="autosave-dot saving"></span> Savingâ€¦</span>
+              <span v-else-if="autoSaveStatus === 'saved'"><span class="autosave-dot saved"></span> Saved</span>
             </div>
             <div class="right-actions">
-              <button class="btn-cyan-solid" @click="saveAndNext" :disabled="isSaving || questionLoading">Save & Next</button>
+              <button class="btn-cyan-solid" @click="saveAndNext" :disabled="isSaving">Save & Next</button>
             </div>
           </div>
         </main>
@@ -599,7 +645,7 @@ onUnmounted(() => {
     <!-- Submit Confirmation Modal -->
     <div v-if="showSubmitModal" class="submit-modal-overlay" @click.self="showSubmitModal = false">
       <div class="submit-modal">
-        <div class="submit-modal-icon">📋</div>
+        <div class="submit-modal-icon">ðŸ“‹</div>
         <h3>Submit Test</h3>
         <div class="submit-modal-stats">
           <span class="stat answered">{{ stats.answered }} Answered</span>
@@ -617,7 +663,7 @@ onUnmounted(() => {
     <!-- Warning Modal (Proctoring) -->
     <div v-if="showWarningModal" class="submit-modal-overlay">
       <div class="submit-modal warning-modal">
-        <div class="submit-modal-icon">⚠️</div>
+        <div class="submit-modal-icon">âš ï¸</div>
         <h3 style="color: #dc3545;">Proctoring Warning</h3>
         <p>You have navigated away from the test window.<br/>
         <strong>Warning {{ warnings }} of {{ maxWarnings }}</strong></p>
@@ -748,7 +794,7 @@ onUnmounted(() => {
 /* Marked & Answered: Purple Circle with internal green check */
 .shape.marked-answered { background: #9b51e0; border-radius: 50%; width: 26px; height: 26px; line-height: 26px; position: relative; }
 .shape.marked-answered::after { 
-   content: '✔'; 
+   content: 'âœ”'; 
    position: absolute; 
    font-size: 10px; 
    color: #28a745; 
@@ -800,6 +846,32 @@ onUnmounted(() => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+
+/* â”€â”€â”€ Auto-save indicator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+.autosave-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #888;
+  min-width: 72px;
+  transition: opacity 0.3s;
+  user-select: none;
+}
+.autosave-indicator span { display: flex; align-items: center; gap: 4px; }
+.autosave-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.autosave-dot.saving {
+  background: #f59e0b;
+  animation: pulse 0.9s ease-in-out infinite;
+}
+.autosave-dot.saved {
+  background: #22c55e;
+}
 
 /* Submit Confirmation Modal */
 .submit-modal-overlay {
@@ -864,7 +936,7 @@ onUnmounted(() => {
 .modal-btn.cancel { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
 .modal-btn.confirm { background: #00a4d1; color: white; }
 
-/* ─── Passage Panel ───────────────────────────────────── */
+/* â”€â”€â”€ Passage Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .passage-panel {
   background: #faf5ff;
   border: 1px solid #d8b4fe;
@@ -909,3 +981,4 @@ onUnmounted(() => {
   border: 1px solid #e9d5ff;
 }
 </style>
+

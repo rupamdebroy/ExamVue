@@ -1,13 +1,22 @@
-<template>
+﻿<template>
   <div class="topic-management">
     <div class="header-section">
       <div class="header-titles">
         <h1>Topic Management</h1>
         <p>Manage TCExam subjects within modules</p>
       </div>
-      <button class="primary-btn" @click="openCreateModal">
-        <span class="icon">+</span> Add New Topic
-      </button>
+      <div class="header-actions">
+        <button class="secondary-btn" @click="exportTopics">
+          <span class="icon">â†“</span> Export CSV
+        </button>
+        <label class="secondary-btn">
+          <span class="icon">â†‘</span> Import CSV
+          <input type="file" accept=".csv" @change="importTopics" style="display: none" />
+        </label>
+        <button class="primary-btn" @click="openCreateModal">
+          <span class="icon">+</span> Add New Topic
+        </button>
+      </div>
     </div>
     
     <div class="controls-section">
@@ -20,10 +29,18 @@
       </select>
     </div>
     
+    <!-- Toast Messages (fixed overlay) -->
+    <teleport to="body">
+      <transition name="toast-slide">
+        <div class="toast error-toast" v-if="error">âš ï¸ {{ error }}</div>
+      </transition>
+      <transition name="toast-slide">
+        <div class="toast info-toast" v-if="infoMessage">âœ… {{ infoMessage }}</div>
+      </transition>
+    </teleport>
+
     <div class="loading" v-if="loading">Loading topics...</div>
-    <div class="error" v-else-if="error">{{ error }}</div>
-    <div class="info" v-else-if="infoMessage">{{ infoMessage }}</div>
-    
+
     <div class="table-container" v-else>
       <table class="data-table">
         <thead>
@@ -76,7 +93,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import TopicFormModal from '../components/TopicFormModal.vue';
-import { API_BASE_URL } from '../config/constant.js';
+import { API_ENDPOINTS } from '../config/constant.js';
 
 const topicsList = ref([]);
 const modules = ref([]);
@@ -98,7 +115,7 @@ const fetchTopicsAndModules = async () => {
     const token = localStorage.getItem('tce_token');
     
     // Fetch Modules for filtering
-    const modRes = await fetch(`${API_BASE_URL}/admin/modules.php`, {
+    const modRes = await fetch(`${API_ENDPOINTS.ADMIN_MODULES}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const modResult = await modRes.json();
@@ -107,7 +124,7 @@ const fetchTopicsAndModules = async () => {
     }
 
     // Fetch Topics
-    const topRes = await fetch(`${API_BASE_URL}/admin/topics.php`, {
+    const topRes = await fetch(`${API_ENDPOINTS.ADMIN_TOPICS}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const topResult = await topRes.json();
@@ -126,7 +143,7 @@ const fetchTopicsAndModules = async () => {
 const fetchTopicsOnly = async () => {
     try {
         const token = localStorage.getItem('tce_token');
-        const topRes = await fetch(`${API_BASE_URL}/admin/topics.php`, {
+        const topRes = await fetch(`${API_ENDPOINTS.ADMIN_TOPICS}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const topResult = await topRes.json();
@@ -141,6 +158,46 @@ const fetchTopicsOnly = async () => {
 onMounted(() => {
   fetchTopicsAndModules();
 });
+
+const exportTopics = () => {
+  const token = localStorage.getItem('tce_token');
+  let url = `${API_ENDPOINTS.ADMIN_EXPORT_TOPICS}?token=${token}`;
+  if (moduleFilter.value) url += `&module_id=${moduleFilter.value}`;
+  window.open(url, '_blank');
+};
+
+const importTopics = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    loading.value = true;
+    const token = localStorage.getItem('tce_token');
+    const response = await fetch(`${API_ENDPOINTS.ADMIN_IMPORT_TOPICS}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    });
+
+    const result = await response.json();
+    if (result.status === 'success') {
+      let msg = result.message;
+      if (result.skipped > 0) msg += ` (${result.skipped} skipped)`;
+      showInfo(msg);
+      fetchTopicsAndModules();
+    } else {
+      showError(result.message || 'Failed to import topics');
+    }
+  } catch (err) {
+    showError('Network error while importing');
+  } finally {
+    loading.value = false;
+    event.target.value = '';
+  }
+};
 
 const filteredTopics = computed(() => {
   let result = topicsList.value;
@@ -190,8 +247,8 @@ const saveTopic = async (topicData) => {
   try {
     const token = localStorage.getItem('tce_token');
     const url = isEditing.value 
-      ? `${API_BASE_URL}/admin/topics.php?topic_id=${selectedTopic.value.subject_id}` 
-      : `${API_BASE_URL}/admin/topics.php`;
+      ? `${API_ENDPOINTS.ADMIN_TOPICS}?topic_id=${selectedTopic.value.subject_id}` 
+      : `${API_ENDPOINTS.ADMIN_TOPICS}`;
       
     const method = isEditing.value ? 'PUT' : 'POST';
     
@@ -224,7 +281,7 @@ const confirmDelete = async (topic) => {
   if (confirm(`Are you sure you want to delete topic: ${topic.subject_name}?`)) {
     try {
       const token = localStorage.getItem('tce_token');
-      const response = await fetch(`${API_BASE_URL}/admin/topics.php?topic_id=${topic.subject_id}`, {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN_TOPICS}?topic_id=${topic.subject_id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -273,6 +330,48 @@ const confirmDelete = async (topic) => {
   margin: 0.2rem 0 0 0;
   font-size: 0.95rem;
 }
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.secondary-btn {
+  background: white;
+  color: #4f46e5;
+  border: 1px solid #4f46e5;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+}
+.secondary-btn:hover { background: #f5f3ff; }
+
+/* Toast (fixed overlay) */
+.toast {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.5rem;
+  z-index: 9999;
+  padding: 0.85rem 1.4rem;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  max-width: 420px;
+  pointer-events: none;
+}
+.error-toast { background: #fee2e2; color: #b91c1c; border-left: 4px solid #b91c1c; }
+.info-toast  { background: #dcfce7; color: #15803d; border-left: 4px solid #22c55e; }
+.toast-slide-enter-active, .toast-slide-leave-active { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.toast-slide-enter-from, .toast-slide-leave-to { opacity: 0; transform: translateX(60px); }
 
 .primary-btn {
   background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
@@ -451,3 +550,4 @@ const confirmDelete = async (topic) => {
   border-left: 4px solid #0ea5e9;
 }
 </style>
+

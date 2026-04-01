@@ -1,6 +1,6 @@
-<script setup>
+﻿<script setup>
 import { ref, onMounted, computed } from 'vue'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const groups = ref([])
 const isLoading = ref(true)
@@ -19,7 +19,7 @@ const fetchGroups = async () => {
   isLoading.value = true
   const token = localStorage.getItem('tce_token')
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/groups.php`, {
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_GROUPS}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     const data = await res.json()
@@ -60,8 +60,8 @@ const handleSave = async () => {
   
   const token = localStorage.getItem('tce_token')
   const url = isEditing.value 
-    ? `${API_BASE_URL}/admin/groups.php?group_id=${formData.value.group_id}`
-    : `${API_BASE_URL}/admin/groups.php`
+    ? `${API_ENDPOINTS.ADMIN_GROUPS}?group_id=${formData.value.group_id}`
+    : `${API_ENDPOINTS.ADMIN_GROUPS}`
     
   try {
     const res = await fetch(url, {
@@ -92,7 +92,7 @@ const confirmDelete = async () => {
   isDeleting.value = true
   const token = localStorage.getItem('tce_token')
   try {
-    const res = await fetch(`${API_BASE_URL}/admin/groups.php?group_id=${groupToDelete.value.group_id}`, {
+    const res = await fetch(`${API_ENDPOINTS.ADMIN_GROUPS}?group_id=${groupToDelete.value.group_id}`, {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     })
@@ -141,7 +141,7 @@ onMounted(fetchGroups)
 
     <div class="filters-card">
       <div class="search-wrap">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">ðŸ”</span>
         <input type="text" v-model="searchQuery" placeholder="Search categories..." class="search-input" />
       </div>
     </div>
@@ -166,15 +166,15 @@ onMounted(fetchGroups)
             <td class="id-cell">#{{ cat.group_id }}</td>
             <td class="name-cell">{{ cat.group_name }}</td>
             <td class="action-cell">
-              <button class="edit-btn" @click="openEditModal(cat)">✏️ Edit</button>
-              <button class="delete-btn" @click="promptDelete(cat)">🗑️ Delete</button>
+              <button class="edit-btn" @click="openEditModal(cat)">âœï¸ Edit</button>
+              <button class="delete-btn" @click="promptDelete(cat)">ðŸ—‘ï¸ Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
 
       <div v-else-if="!isLoading" class="empty-state">
-        <div class="empty-icon">📂</div>
+        <div class="empty-icon">ðŸ“‚</div>
         <p>No categories found.</p>
       </div>
     </div>
@@ -184,7 +184,7 @@ onMounted(fetchGroups)
       <div class="modal-content">
         <div class="modal-header">
           <h3>{{ isEditing ? 'Edit Category' : 'Create New Category' }}</h3>
-          <button class="close-btn" @click="closeModal">✕</button>
+          <button class="close-btn" @click="closeModal">âœ•</button>
         </div>
         <div class="modal-body">
           <div class="form-group">
@@ -202,7 +202,7 @@ onMounted(fetchGroups)
     <!-- Delete Modal -->
     <div class="modal-overlay" v-if="groupToDelete" @click.self="groupToDelete = null">
       <div class="confirm-modal">
-        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-icon">âš ï¸</div>
         <h3>Delete Category</h3>
         <p>Are you sure you want to delete <strong>{{ groupToDelete.group_name }}</strong>?</p>
         <p class="confirm-note">Warning: If this category is currently being used, it cannot be deleted.</p>
@@ -293,3 +293,4 @@ onMounted(fetchGroups)
 .confirm-delete-btn:hover:not(:disabled) { opacity: 0.9; }
 .confirm-delete-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
+

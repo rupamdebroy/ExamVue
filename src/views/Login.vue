@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { API_BASE_URL } from '../config/constant.js'
+import { API_ENDPOINTS } from '../config/constant.js'
 
 const router = useRouter()
 const username = ref('')
@@ -14,7 +14,7 @@ const handleLogin = async () => {
   isLoading.value = true
 
   try {
-    const response = await fetch(`${API_BASE_URL}/login.php`, {
+    const response = await fetch(API_ENDPOINTS.LOGIN, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
