@@ -40,6 +40,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           source: "dist/*"
           target: "/home/rundoc-test/htdocs/test.rundoc.in/"
+          
 
       - name: Set permissions
         uses: appleboy/ssh-action@v1.0.0
